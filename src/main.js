@@ -153,12 +153,47 @@ try {
         log.info(`Pushed ${newFilteredJobs.length} new items to default dataset.`);
     }
 
-    // 6. Deliver to Telegram
-    if (telegramBotToken && telegramChatId && newFilteredJobs.length > 0) {
-        log.info(`Delivering ${newFilteredJobs.length} new job alerts to Telegram...`);
+    const googleSheetWebhookUrl = rawInput.googleSheetWebhookUrl || process.env.GOOGLE_SHEET_WEBHOOK_URL;
 
-        const displayJobs = newFilteredJobs.slice(0, 10);
-        const remainingCount = newFilteredJobs.length - displayJobs.length;
+    // 6. Append to Google Sheets (if configured)
+    if (googleSheetWebhookUrl && newFilteredJobs.length > 0) {
+        log.info(`Appending ${newFilteredJobs.length} new jobs to Google Sheets...`);
+        try {
+            const sheetPayload = {
+                jobs: newFilteredJobs.map(job => ({
+                    date: new Date().toLocaleDateString('en-IN'),
+                    time: new Date().toLocaleTimeString('en-IN'),
+                    title: job.title,
+                    company: job.company,
+                    experience: job.seniorityLevel || (job.isFresherFriendly ? 'Fresher / Entry level' : 'Entry level'),
+                    location: job.location,
+                    salary: job.salary || 'Not disclosed',
+                    url: job.url,
+                    source: job.sourceKeyword || sourceLabel,
+                    isFresher: job.isFresherFriendly ? 'Yes' : 'No',
+                }))
+            };
+
+            const sheetRes = await fetch(googleSheetWebhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(sheetPayload),
+            });
+
+            if (sheetRes.ok) {
+                log.info('Successfully appended rows to Google Sheet.');
+            } else {
+                const sheetErr = await sheetRes.text();
+                log.error(`Google Sheet append failed: ${sheetRes.status} - ${sheetErr}`);
+            }
+        } catch (sheetErr) {
+            log.error(`Error sending to Google Sheet: ${sheetErr.message}`);
+        }
+    }
+
+    // 7. Deliver to Telegram (Chunked to send ALL jobs without hitting character limit)
+    if (telegramBotToken && telegramChatId && newFilteredJobs.length > 0) {
+        log.info(`Delivering all ${newFilteredJobs.length} job alerts to Telegram in chunked messages...`);
 
         // Helper for relative time formatting
         const getRelativeTime = (isoOrText) => {
@@ -174,49 +209,49 @@ try {
             return `${diffDays}d ago`;
         };
 
-        let message = `🎯 <b>${newFilteredJobs.length} New Job${newFilteredJobs.length > 1 ? 's' : ''} Found: ${sourceLabel}</b>\n`;
-        message += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+        const CHUNK_SIZE = 8; // 8 jobs per message to stay comfortably within Telegram's 4096 char limit
+        const totalChunks = Math.ceil(newFilteredJobs.length / CHUNK_SIZE);
 
-        for (let i = 0; i < displayJobs.length; i++) {
-            const job = displayJobs[i];
-            const fresherBadge = job.isFresherFriendly ? ' 🟢 [Fresher Friendly]' : '';
-            const expText = job.seniorityLevel || (job.isFresherFriendly ? 'Fresher / Entry level (0-2 yrs)' : 'Entry level');
-            const salaryText = job.salary ? job.salary : 'Not disclosed';
-            const timeAgo = getRelativeTime(job.postedAt);
+        for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
+            const chunkJobs = newFilteredJobs.slice(chunkIdx * CHUNK_SIZE, (chunkIdx + 1) * CHUNK_SIZE);
+            
+            let message = `🎯 <b>${newFilteredJobs.length} New Jobs: ${sourceLabel}</b> (Batch ${chunkIdx + 1}/${totalChunks})\n`;
+            message += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-            message += `📌 <b>Title:</b> <a href="${job.url}">${job.title}</a>${fresherBadge}\n`;
-            message += `🏢 <b>Company:</b> ${job.company}\n`;
-            message += `🎓 <b>Experience:</b> ${expText}\n`;
-            message += `📍 <b>Location:</b> ${job.location}\n`;
-            message += `💰 <b>Salary:</b> ${salaryText}\n`;
-            message += `🔗 <b>Link:</b> ${job.url}\n`;
-            message += `🕒 <b>Posted:</b> ${timeAgo}\n`;
-            message += `──────────────────────────\n\n`;
+            for (const job of chunkJobs) {
+                const fresherBadge = job.isFresherFriendly ? ' 🟢 [Fresher Friendly]' : '';
+                const expText = job.seniorityLevel || (job.isFresherFriendly ? 'Fresher / Entry level (0-2 yrs)' : 'Entry level');
+                const salaryText = job.salary ? job.salary : 'Not disclosed';
+                const timeAgo = getRelativeTime(job.postedAt);
+
+                message += `📌 <b>Title:</b> <a href="${job.url}">${job.title}</a>${fresherBadge}\n`;
+                message += `🏢 <b>Company:</b> ${job.company}\n`;
+                message += `🎓 <b>Experience:</b> ${expText}\n`;
+                message += `📍 <b>Location:</b> ${job.location}\n`;
+                message += `💰 <b>Salary:</b> ${salaryText}\n`;
+                message += `🔗 <b>Link:</b> ${job.url}\n`;
+                message += `🕒 <b>Posted:</b> ${timeAgo}\n`;
+                message += `──────────────────────────\n\n`;
+            }
+
+            const telegramApiUrl = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
+
+            await fetch(telegramApiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: telegramChatId,
+                    text: message,
+                    parse_mode: 'HTML',
+                    disable_web_page_preview: true,
+                }),
+            });
+
+            // Small 300ms pause between batches to respect Telegram rate limits
+            await new Promise(res => setTimeout(res, 300));
         }
 
-        if (remainingCount > 0) {
-            message += `➕ <i>...and <b>${remainingCount} more</b> new jobs found in this run.</i>\n`;
-        }
-
-        const telegramApiUrl = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
-
-        const response = await fetch(telegramApiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: telegramChatId,
-                text: message,
-                parse_mode: 'HTML',
-                disable_web_page_preview: true,
-            }),
-        });
-
-        if (response.ok) {
-            log.info('Successfully posted formatted job digest to Telegram.');
-        } else {
-            const errorText = await response.text();
-            log.error(`Failed to post to Telegram: ${response.status} - ${errorText}`);
-        }
+        log.info(`Successfully posted all ${newFilteredJobs.length} jobs across ${totalChunks} messages to Telegram.`);
     } else if (telegramBotToken && telegramChatId && newFilteredJobs.length === 0) {
         log.info('0 new jobs after deduplication. Telegram alert suppressed.');
     }

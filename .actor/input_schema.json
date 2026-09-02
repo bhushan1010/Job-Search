@@ -22,6 +22,12 @@
             "description": "Your numerical Telegram user or channel Chat ID.",
             "editor": "textfield"
         },
+        "googleSheetWebhookUrl": {
+            "title": "Google Sheet Webhook URL (Optional)",
+            "type": "string",
+            "description": "Google Apps Script Web App URL to append all jobs into Google Sheets.",
+            "editor": "textfield"
+        },
         "slackWebhookUrl": {
             "title": "Slack Incoming Webhook URL (Optional)",
             "type": "string",
