@@ -13,6 +13,7 @@ try {
         || rawInput.eventData?.defaultDatasetId
         || rawInput.defaultDatasetId;
 
+    const apifyToken = rawInput.apifyToken || process.env.APIFY_TOKEN;
     const telegramBotToken = rawInput.telegramBotToken || process.env.TELEGRAM_BOT_TOKEN;
     const telegramChatId = rawInput.telegramChatId || process.env.TELEGRAM_CHAT_ID;
     const slackWebhookUrl = rawInput.slackWebhookUrl || process.env.SLACK_WEBHOOK_URL;
@@ -31,6 +32,7 @@ try {
         datasetId,
         sourceLabel,
         storeName,
+        hasApifyToken: Boolean(apifyToken),
         hasTelegram: Boolean(telegramBotToken && telegramChatId),
         hasSlack: Boolean(slackWebhookUrl),
     });
@@ -42,7 +44,7 @@ try {
 
     // 1. Fetch raw items from the scraper dataset
     const client = new ApifyClient({
-        token: process.env.APIFY_TOKEN,
+        token: apifyToken,
     });
 
     const datasetClient = client.dataset(datasetId);
