@@ -1,0 +1,47 @@
+{
+    "title": "Job Pipeline Deduplicator & Filter Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "datasetId": {
+            "title": "Dataset ID",
+            "type": "string",
+            "description": "The Apify dataset ID from the scraper run to deduplicate. If empty, will attempt to read from webhook payload (resource.defaultDatasetId).",
+            "editor": "textfield"
+        },
+        "slackWebhookUrl": {
+            "title": "Slack Incoming Webhook URL (Recommended)",
+            "type": "string",
+            "description": "Optional Slack Incoming Webhook URL. If provided, sends a rich Block Kit formatted digest directly to your Slack channel.",
+            "editor": "textfield"
+        },
+        "sourceLabel": {
+            "title": "Search Keyword / Source Label",
+            "type": "string",
+            "description": "Tag or keyword identifying the source run (e.g., 'AI ML Engineer - Pune').",
+            "editor": "textfield",
+            "default": "Job Pipeline Run"
+        },
+        "excludeTitleRegex": {
+            "title": "Exclude Senior/Lead Roles Regex",
+            "type": "string",
+            "description": "Regex pattern to identify and filter out experienced roles (case-insensitive).",
+            "editor": "textfield",
+            "default": "\\b(sr\\.?|senior|lead|principal|staff|director|vp|vice president|head of|manager|chief|architect|expert|team lead|5\\+|6\\+|7\\+|8\\+|10\\+|5 to 10|5-10)\\b"
+        },
+        "requiredExperienceMaxYears": {
+            "title": "Max Experience (Years)",
+            "type": "integer",
+            "description": "Max experience in years if parsed from job description/title (default 2).",
+            "editor": "number",
+            "default": 2
+        },
+        "storeName": {
+            "title": "Key-Value Store Name",
+            "type": "string",
+            "description": "Named Key-Value Store used across all tasks to maintain persistent deduplication state.",
+            "editor": "textfield",
+            "default": "JOB_PIPELINE_SEEN_STORE"
+        }
+    }
+}

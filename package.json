@@ -1,0 +1,17 @@
+{
+    "name": "job-pipeline-dedup-filter",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "Apify actor to filter and deduplicate scraped job listings for entry-level candidates and deliver alerts to Slack.",
+    "main": "src/main.js",
+    "dependencies": {
+        "apify": "^3.2.5",
+        "apify-client": "^2.11.0"
+    },
+    "scripts": {
+        "start": "node src/main.js",
+        "test": "node src/main.js"
+    },
+    "author": "Bhushan",
+    "license": "ISC"
+}

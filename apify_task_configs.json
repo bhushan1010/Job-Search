@@ -1,0 +1,116 @@
+{
+  "tasks": [
+    {
+      "taskName": "task-job-aiml",
+      "keyword": "AI ML Engineer",
+      "targetActor": "curious_coder/linkedin-jobs-search-scraper",
+      "input": {
+        "title": "AI ML Engineer",
+        "location": "Pune, Maharashtra, India",
+        "rows": 50,
+        "publishedAt": "r86400",
+        "experienceLevel": ["1", "2", "3"]
+      },
+      "webhookPayload": {
+        "datasetId": "{{resource.defaultDatasetId}}",
+        "sourceLabel": "AI ML Engineer (Pune / Remote)"
+      }
+    },
+    {
+      "taskName": "task-job-mle",
+      "keyword": "Machine Learning Engineer",
+      "targetActor": "curious_coder/linkedin-jobs-search-scraper",
+      "input": {
+        "title": "Machine Learning Engineer",
+        "location": "Pune, Maharashtra, India",
+        "rows": 50,
+        "publishedAt": "r86400",
+        "experienceLevel": ["1", "2", "3"]
+      },
+      "webhookPayload": {
+        "datasetId": "{{resource.defaultDatasetId}}",
+        "sourceLabel": "Machine Learning Engineer (Pune)"
+      }
+    },
+    {
+      "taskName": "task-job-genai",
+      "keyword": "Generative AI Engineer",
+      "targetActor": "curious_coder/linkedin-jobs-search-scraper",
+      "input": {
+        "title": "Generative AI Engineer",
+        "location": "India",
+        "rows": 50,
+        "publishedAt": "r86400",
+        "experienceLevel": ["1", "2", "3"]
+      },
+      "webhookPayload": {
+        "datasetId": "{{resource.defaultDatasetId}}",
+        "sourceLabel": "GenAI Engineer (India / Remote)"
+      }
+    },
+    {
+      "taskName": "task-job-backend",
+      "keyword": "Backend Engineer",
+      "targetActor": "curious_coder/linkedin-jobs-search-scraper",
+      "input": {
+        "title": "Backend Engineer",
+        "location": "Pune, Maharashtra, India",
+        "rows": 50,
+        "publishedAt": "r86400",
+        "experienceLevel": ["1", "2", "3"]
+      },
+      "webhookPayload": {
+        "datasetId": "{{resource.defaultDatasetId}}",
+        "sourceLabel": "Backend Engineer (Pune)"
+      }
+    },
+    {
+      "taskName": "task-job-fullstack",
+      "keyword": "Full Stack Engineer",
+      "targetActor": "curious_coder/linkedin-jobs-search-scraper",
+      "input": {
+        "title": "Full Stack Engineer",
+        "location": "Pune, Maharashtra, India",
+        "rows": 50,
+        "publishedAt": "r86400",
+        "experienceLevel": ["1", "2", "3"]
+      },
+      "webhookPayload": {
+        "datasetId": "{{resource.defaultDatasetId}}",
+        "sourceLabel": "Full Stack Engineer (Pune)"
+      }
+    },
+    {
+      "taskName": "task-job-devops",
+      "keyword": "DevOps Engineer",
+      "targetActor": "curious_coder/linkedin-jobs-search-scraper",
+      "input": {
+        "title": "DevOps Engineer",
+        "location": "Pune, Maharashtra, India",
+        "rows": 50,
+        "publishedAt": "r86400",
+        "experienceLevel": ["1", "2", "3"]
+      },
+      "webhookPayload": {
+        "datasetId": "{{resource.defaultDatasetId}}",
+        "sourceLabel": "DevOps Engineer (Pune)"
+      }
+    },
+    {
+      "taskName": "task-job-swe-fresher",
+      "keyword": "Software Engineer Fresher",
+      "targetActor": "curious_coder/linkedin-jobs-search-scraper",
+      "input": {
+        "title": "Software Engineer Fresher OR Associate Software Engineer",
+        "location": "Pune, Maharashtra, India",
+        "rows": 50,
+        "publishedAt": "r86400",
+        "experienceLevel": ["1", "2", "3"]
+      },
+      "webhookPayload": {
+        "datasetId": "{{resource.defaultDatasetId}}",
+        "sourceLabel": "Software Engineer Fresher / Associate (Pune)"
+      }
+    }
+  ]
+}

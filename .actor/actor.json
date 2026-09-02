@@ -1,0 +1,9 @@
+{
+    "actorSpecification": 1,
+    "name": "job-pipeline-dedup-filter",
+    "title": "Job Pipeline Deduplicator & Fresher Filter",
+    "description": "Deduplicates job postings across Apify scraper runs, filters for fresher/entry-level roles, and formats clean alerts for Slack.",
+    "version": "1.0",
+    "input": "./input_schema.json",
+    "dockerfile": "./Dockerfile"
+}
