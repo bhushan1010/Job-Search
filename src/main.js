@@ -153,35 +153,40 @@ try {
         log.info(`Pushed ${newFilteredJobs.length} new items to default dataset.`);
     }
 
-    const googleSheetWebhookUrl = rawInput.googleSheetWebhookUrl || process.env.GOOGLE_SHEET_WEBHOOK_URL;
-
-    // 6. Append to Google Sheets (if configured)
+    // 6. Append to Google Sheets (via SheetDB or Webhook)
     if (googleSheetWebhookUrl && newFilteredJobs.length > 0) {
-        log.info(`Appending ${newFilteredJobs.length} new jobs to Google Sheets...`);
+        log.info(`Appending ${newFilteredJobs.length} new jobs to Google Sheets via SheetDB...`);
         try {
-            const sheetPayload = {
-                jobs: newFilteredJobs.map(job => ({
-                    date: new Date().toLocaleDateString('en-IN'),
-                    time: new Date().toLocaleTimeString('en-IN'),
-                    title: job.title,
-                    company: job.company,
-                    experience: job.seniorityLevel || (job.isFresherFriendly ? 'Fresher / Entry level' : 'Entry level'),
-                    location: job.location,
-                    salary: job.salary || 'Not disclosed',
-                    url: job.url,
-                    source: job.sourceKeyword || sourceLabel,
-                    isFresher: job.isFresherFriendly ? 'Yes' : 'No',
-                }))
-            };
+            const rows = newFilteredJobs.map(job => ({
+                Date: new Date().toLocaleDateString('en-IN'),
+                Time: new Date().toLocaleTimeString('en-IN'),
+                Title: job.title,
+                Company: job.company,
+                Experience: job.seniorityLevel || (job.isFresherFriendly ? 'Fresher / Entry level' : 'Entry level'),
+                Location: job.location,
+                Salary: job.salary || 'Not disclosed',
+                Url: job.url,
+                Source: job.sourceKeyword || sourceLabel,
+                Status: 'New'
+            }));
+
+            // SheetDB expects { data: [ ...rows ] }
+            const payload = googleSheetWebhookUrl.includes('sheetdb.io') 
+                ? { data: rows } 
+                : { jobs: rows, data: rows };
 
             const sheetRes = await fetch(googleSheetWebhookUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(sheetPayload),
+                headers: { 
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify(payload),
             });
 
             if (sheetRes.ok) {
-                log.info('Successfully appended rows to Google Sheet.');
+                const resJson = await sheetRes.json().catch(() => ({}));
+                log.info('Successfully appended rows to Google Sheet:', resJson);
             } else {
                 const sheetErr = await sheetRes.text();
                 log.error(`Google Sheet append failed: ${sheetRes.status} - ${sheetErr}`);
