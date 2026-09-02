@@ -19,7 +19,8 @@ try {
     const slackWebhookUrl = rawInput.slackWebhookUrl || process.env.SLACK_WEBHOOK_URL;
 
     const sourceLabel = rawInput.sourceLabel || rawInput.resource?.actorId || 'Job Search Pipeline';
-    const storeName = rawInput.storeName || 'job-pipeline-seen-store';
+    const rawStoreName = rawInput.storeName || 'job-pipeline-seen-store';
+    const storeName = rawStoreName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/^-+|-+$/g, '') || 'job-pipeline-seen-store';
     const maxSeenHistory = rawInput.maxSeenHistory || 10000;
 
     const excludeRegexStr = rawInput.excludeTitleRegex 

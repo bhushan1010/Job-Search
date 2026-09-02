@@ -47,7 +47,7 @@
             "type": "string",
             "description": "Named Key-Value Store used across all tasks to maintain persistent deduplication state.",
             "editor": "textfield",
-            "default": "JOB_PIPELINE_SEEN_STORE"
+            "default": "job-pipeline-seen-store"
         }
     }
 }
