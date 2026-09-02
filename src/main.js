@@ -13,7 +13,10 @@ try {
         || rawInput.eventData?.defaultDatasetId
         || rawInput.defaultDatasetId;
 
+    const telegramBotToken = rawInput.telegramBotToken || process.env.TELEGRAM_BOT_TOKEN;
+    const telegramChatId = rawInput.telegramChatId || process.env.TELEGRAM_CHAT_ID;
     const slackWebhookUrl = rawInput.slackWebhookUrl || process.env.SLACK_WEBHOOK_URL;
+
     const sourceLabel = rawInput.sourceLabel || rawInput.resource?.actorId || 'Job Search Pipeline';
     const storeName = rawInput.storeName || 'JOB_PIPELINE_SEEN_STORE';
     const maxSeenHistory = rawInput.maxSeenHistory || 10000;
@@ -28,7 +31,8 @@ try {
         datasetId,
         sourceLabel,
         storeName,
-        hasSlackWebhook: Boolean(slackWebhookUrl),
+        hasTelegram: Boolean(telegramBotToken && telegramChatId),
+        hasSlack: Boolean(slackWebhookUrl),
     });
 
     if (!datasetId) {
@@ -68,7 +72,6 @@ try {
         if (!rawUrl) return '';
         try {
             const parsed = new URL(rawUrl);
-            // Retain path but strip noisy query parameters like trackingId, refId, etc.
             return `${parsed.origin}${parsed.pathname}`;
         } catch {
             return rawUrl.split('?')[0];
@@ -76,7 +79,6 @@ try {
     };
 
     for (const item of rawItems) {
-        // Normalize fields across curious_coder/linkedin and borderline/indeed scrapers
         const title = (item.title || item.jobTitle || item.position || '').trim();
         const company = (item.companyName || item.company || item.company_name || 'Confidential').trim();
         const location = (item.location || item.jobLocation || item.formattedLocation || item.place || 'Pune / India').trim();
@@ -87,7 +89,6 @@ try {
         const seniority = (item.seniorityLevel || item.experienceLevel || '').trim();
         const description = (item.description || item.jobDescription || item.snippet || '').trim();
 
-        // Unique ID fingerprint: preference for cleaned URL, then jobId, then combined title+company
         const uniqueId = url || item.id || item.jobKey || `${title}::${company}`.toLowerCase().replace(/\s+/g, '-');
 
         // Check if senior/lead role (Exclude if matches senior regex, unless explicitly an Associate/Fresher/Junior title)
@@ -135,7 +136,7 @@ try {
     // 4. Prune seenMap if it exceeds max size (remove oldest entries)
     const seenEntries = Object.entries(seenMap);
     if (seenEntries.length > maxSeenHistory) {
-        seenEntries.sort((a, b) => a[1] - b[1]); // sort ascending by timestamp
+        seenEntries.sort((a, b) => a[1] - b[1]);
         const trimmedMap = Object.fromEntries(seenEntries.slice(seenEntries.length - maxSeenHistory));
         await store.setValue(storeRecordKey, trimmedMap);
         log.info(`Pruned seen ID store down to ${maxSeenHistory} records.`);
@@ -149,7 +150,54 @@ try {
         log.info(`Pushed ${newFilteredJobs.length} new items to default dataset.`);
     }
 
-    // 6. Deliver to Slack (if Webhook URL configured)
+    // 6. Deliver to Telegram
+    if (telegramBotToken && telegramChatId && newFilteredJobs.length > 0) {
+        log.info(`Delivering ${newFilteredJobs.length} new job alerts to Telegram...`);
+
+        const displayJobs = newFilteredJobs.slice(0, 10);
+        const remainingCount = newFilteredJobs.length - displayJobs.length;
+
+        let message = `🎯 <b>${newFilteredJobs.length} New Job${newFilteredJobs.length > 1 ? 's' : ''} Found: ${sourceLabel}</b>\n`;
+        message += `<i>Target: Entry-Level / Fresher (Pune & India)</i>\n`;
+        message += `━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+        for (const job of displayJobs) {
+            const fresherBadge = job.isFresherFriendly ? ' 🟢 [Fresher Friendly]' : '';
+            const salaryText = job.salary ? `\n💰 <i>${job.salary}</i>` : '';
+            
+            message += `💼 <a href="${job.url}"><b>${job.title}</b></a>${fresherBadge}\n`;
+            message += `🏢 <b>${job.company}</b> • 📍 ${job.location}${salaryText}\n`;
+            message += `🕒 <i>Posted: ${job.postedAt}</i>\n\n`;
+        }
+
+        if (remainingCount > 0) {
+            message += `➕ <i>...and <b>${remainingCount} more</b> new jobs found in this run.</i>\n`;
+        }
+
+        const telegramApiUrl = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
+
+        const response = await fetch(telegramApiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: telegramChatId,
+                text: message,
+                parse_mode: 'HTML',
+                disable_web_page_preview: true,
+            }),
+        });
+
+        if (response.ok) {
+            log.info('Successfully posted job digest to Telegram.');
+        } else {
+            const errorText = await response.text();
+            log.error(`Failed to post to Telegram: ${response.status} - ${errorText}`);
+        }
+    } else if (telegramBotToken && telegramChatId && newFilteredJobs.length === 0) {
+        log.info('0 new jobs after deduplication. Telegram alert suppressed.');
+    }
+
+    // 7. Deliver to Slack (if configured)
     if (slackWebhookUrl && newFilteredJobs.length > 0) {
         log.info(`Delivering ${newFilteredJobs.length} new job alerts to Slack...`);
 
@@ -170,7 +218,7 @@ try {
                 elements: [
                     {
                         type: 'mrkdwn',
-                        text: `*Target:* Entry-Level / Fresher (Pune & Remote/India) | *Discovered:* <!date^${Math.floor(Date.now() / 1000)}^{date_short_pretty} at {time}|${new Date().toLocaleTimeString()}>`,
+                        text: `*Target:* Entry-Level / Fresher (Pune & Remote/India)`,
                     },
                 ],
             },
@@ -182,14 +230,11 @@ try {
         for (const job of displayJobs) {
             const fresherBadge = job.isFresherFriendly ? ' 🟢 `Fresher/Entry-Level`' : '';
             const salaryText = job.salary ? ` • 💰 _${job.salary}_` : '';
-            const locationText = `📍 *${job.location}*`;
-            const companyText = `🏢 *${job.company}*`;
-
             blocks.push({
                 type: 'section',
                 text: {
                     type: 'mrkdwn',
-                    text: `*<${job.url}|${job.title}>*${fresherBadge}\n${companyText} • ${locationText}${salaryText}\n🕒 _Posted: ${job.postedAt}_`,
+                    text: `*<${job.url}|${job.title}>*${fresherBadge}\n🏢 *${job.company}* • 📍 *${job.location}*${salaryText}\n🕒 _Posted: ${job.postedAt}_`,
                 },
             });
         }
@@ -200,35 +245,20 @@ try {
                 elements: [
                     {
                         type: 'mrkdwn',
-                        text: `➕ _...and *${remainingCount} more* new jobs found in this run. Check your Apify dataset for the full list._`,
+                        text: `➕ _...and *${remainingCount} more* new jobs found in this run._`,
                     },
                 ],
             });
         }
 
-        blocks.push({
-            type: 'divider',
-        });
-
-        const slackPayload = {
-            text: `🎯 ${newFilteredJobs.length} New Jobs found for "${sourceLabel}"`,
-            blocks,
-        };
-
-        const response = await fetch(slackWebhookUrl, {
+        await fetch(slackWebhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(slackPayload),
+            body: JSON.stringify({
+                text: `🎯 ${newFilteredJobs.length} New Jobs found for "${sourceLabel}"`,
+                blocks,
+            }),
         });
-
-        if (response.ok) {
-            log.info('Successfully posted job digest to Slack.');
-        } else {
-            const errorText = await response.text();
-            log.error(`Failed to post to Slack: ${response.status} ${response.statusText} - ${errorText}`);
-        }
-    } else if (slackWebhookUrl && newFilteredJobs.length === 0) {
-        log.info('0 new jobs after deduplication. Slack notification suppressed to prevent channel noise.');
     }
 
 } catch (err) {
