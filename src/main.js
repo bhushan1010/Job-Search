@@ -161,12 +161,15 @@ try {
             const rows = newFilteredJobs.map(job => ({
                 Date: new Date().toLocaleDateString('en-IN'),
                 Time: new Date().toLocaleTimeString('en-IN'),
+                "Job Title": job.title,
                 Title: job.title,
                 Company: job.company,
                 Experience: job.seniorityLevel || (job.isFresherFriendly ? 'Fresher / Entry level' : 'Entry level'),
                 Location: job.location,
                 Salary: job.salary || 'Not disclosed',
+                "Job Link": job.url,
                 Url: job.url,
+                "Source / Keyword": job.sourceKeyword || sourceLabel,
                 Source: job.sourceKeyword || sourceLabel,
                 Status: 'New'
             }));
