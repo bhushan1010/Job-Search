@@ -160,17 +160,38 @@ try {
         const displayJobs = newFilteredJobs.slice(0, 10);
         const remainingCount = newFilteredJobs.length - displayJobs.length;
 
-        let message = `🎯 <b>${newFilteredJobs.length} New Job${newFilteredJobs.length > 1 ? 's' : ''} Found: ${sourceLabel}</b>\n`;
-        message += `<i>Target: Entry-Level / Fresher (Pune & India)</i>\n`;
-        message += `━━━━━━━━━━━━━━━━━━━━━\n\n`;
+        // Helper for relative time formatting
+        const getRelativeTime = (isoOrText) => {
+            if (!isoOrText) return 'Recently';
+            const timestamp = Date.parse(isoOrText);
+            if (isNaN(timestamp)) return isoOrText;
+            const diffMs = Date.now() - timestamp;
+            const diffMins = Math.floor(diffMs / (1000 * 60));
+            if (diffMins < 60) return `${diffMins}m ago`;
+            const diffHours = Math.floor(diffMins / 60);
+            if (diffHours < 24) return `${diffHours}h ago`;
+            const diffDays = Math.floor(diffHours / 24);
+            return `${diffDays}d ago`;
+        };
 
-        for (const job of displayJobs) {
+        let message = `🎯 <b>${newFilteredJobs.length} New Job${newFilteredJobs.length > 1 ? 's' : ''} Found: ${sourceLabel}</b>\n`;
+        message += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+        for (let i = 0; i < displayJobs.length; i++) {
+            const job = displayJobs[i];
             const fresherBadge = job.isFresherFriendly ? ' 🟢 [Fresher Friendly]' : '';
-            const salaryText = job.salary ? `\n💰 <i>${job.salary}</i>` : '';
-            
-            message += `💼 <a href="${job.url}"><b>${job.title}</b></a>${fresherBadge}\n`;
-            message += `🏢 <b>${job.company}</b> • 📍 ${job.location}${salaryText}\n`;
-            message += `🕒 <i>Posted: ${job.postedAt}</i>\n\n`;
+            const expText = job.seniorityLevel || (job.isFresherFriendly ? 'Fresher / Entry level (0-2 yrs)' : 'Entry level');
+            const salaryText = job.salary ? job.salary : 'Not disclosed';
+            const timeAgo = getRelativeTime(job.postedAt);
+
+            message += `📌 <b>Title:</b> <a href="${job.url}">${job.title}</a>${fresherBadge}\n`;
+            message += `🏢 <b>Company:</b> ${job.company}\n`;
+            message += `🎓 <b>Experience:</b> ${expText}\n`;
+            message += `📍 <b>Location:</b> ${job.location}\n`;
+            message += `💰 <b>Salary:</b> ${salaryText}\n`;
+            message += `🔗 <b>Link:</b> ${job.url}\n`;
+            message += `🕒 <b>Posted:</b> ${timeAgo}\n`;
+            message += `──────────────────────────\n\n`;
         }
 
         if (remainingCount > 0) {
@@ -191,7 +212,7 @@ try {
         });
 
         if (response.ok) {
-            log.info('Successfully posted job digest to Telegram.');
+            log.info('Successfully posted formatted job digest to Telegram.');
         } else {
             const errorText = await response.text();
             log.error(`Failed to post to Telegram: ${response.status} - ${errorText}`);
