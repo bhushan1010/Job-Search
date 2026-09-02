@@ -16,6 +16,7 @@ try {
     const apifyToken = rawInput.apifyToken || process.env.APIFY_TOKEN;
     const telegramBotToken = rawInput.telegramBotToken || process.env.TELEGRAM_BOT_TOKEN;
     const telegramChatId = rawInput.telegramChatId || process.env.TELEGRAM_CHAT_ID;
+    const googleSheetWebhookUrl = rawInput.googleSheetWebhookUrl || process.env.GOOGLE_SHEET_WEBHOOK_URL;
     const slackWebhookUrl = rawInput.slackWebhookUrl || process.env.SLACK_WEBHOOK_URL;
 
     const sourceLabel = rawInput.sourceLabel || rawInput.resource?.actorId || 'Job Search Pipeline';
